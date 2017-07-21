@@ -1,11 +1,23 @@
-# Bloomberg API usage adapted from Matthew Fieger's github
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
 import urllib
 import re
 import json
 import csv
 
+from six.moves import xrange
+import tensorflow as tf
+
+# GLOBAL CONFIG PARAMETERS
+EXAMPLE_SIZE = 300
+DESIGN_WIDTH = 299
+
+
 def get_ticker_data(ticker, freq):
+    # Reads Bloomberg stock data into a file labeled with the ticker
+    # Heavily adapted from https://github.com/matthewfieger/bloomberg_stock_data
     try:
         htmltext = urllib.urlopen("http://www.bloomberg.com/markets/chart/data/" + frequency + "/" + ticker + ":US")
 	data = json.load(htmltext)
@@ -16,3 +28,34 @@ def get_ticker_data(ticker, freq):
 	    ticker_file.close()
     except:
         print "Exception: Bloomberg API failed to retrieve data."
+
+def read_ticker_data(ticker):
+    # Opens ticker data file and returns second granularity data
+    with open("./prices/" + ticker + ".txt", "r") as f:
+        lines = f.readlines()
+        data = []
+        for line in lines:
+            # convert to ints
+            tokens = [int(val) for val in line.split(",")]
+            data.append(tokens)
+    return data
+
+def gen_training_data(ticker):
+    design_matrix = []
+    label_vector = []
+    for i in xrange(len(data) - EXAMPLE_SIZE):
+        design_matrix.append(data[i : i + DESIGN_WIDTH])
+        label_vector.add(data[i])
+    return [design_matrix, label_vector]
+
+# each data point is a day? See "sliding window"
+# what can we classify from each of these?
+# - volatility
+# - whether the price ended higher or lower
+# -
+# sliding window architecture, over intervals of X for each day... or maybe even just the year.
+# are we even using a CNN? Let's consider a 10Y dataset oh but if there are a lot of stocks it's viable
+# 10 Y = 300 M seconds, if we call each image 3000 seconds we could do something in the 100000s. What if we just used a normal NN over windwos of 300 (299 + 1) each to predict the next value?
+# Need to remember to validate on different sets (tickers)
+# Why second-level granularity? Because you can avoid bullshit like the program running too slow in Python
+# does the second at which the price is updated matter at all? Also are we classifying up/down/constant or a numerical predictive value? I feel like having an output layer of 3 is good or at least simpler
