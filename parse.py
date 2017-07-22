@@ -11,8 +11,8 @@ from six.moves import xrange
 import tensorflow as tf
 
 # GLOBAL CONFIG PARAMETERS
-EXAMPLE_SIZE = 300
-DESIGN_WIDTH = 299
+EXAMPLE_SIZE = 30
+DESIGN_WIDTH = EXAMPLE_SIZE - 1
 
 
 def get_ticker_data(ticker, freq):
@@ -45,17 +45,23 @@ def gen_training_data(ticker):
     label_vector = []
     for i in xrange(len(data) - EXAMPLE_SIZE):
         design_matrix.append(data[i : i + DESIGN_WIDTH])
-        label_vector.add(data[i])
+        label_vector.add((data[i + DESIGN_WIDTH] > data[i + DESIGN_WIDTH - 1]))
     return [design_matrix, label_vector]
+
 
 # each data point is a day? See "sliding window"
 # what can we classify from each of these?
 # - volatility
 # - whether the price ended higher or lower
-# -
+# - actual ending value
 # sliding window architecture, over intervals of X for each day... or maybe even just the year.
 # are we even using a CNN? Let's consider a 10Y dataset oh but if there are a lot of stocks it's viable
 # 10 Y = 300 M seconds, if we call each image 3000 seconds we could do something in the 100000s. What if we just used a normal NN over windwos of 300 (299 + 1) each to predict the next value?
 # Need to remember to validate on different sets (tickers)
-# Why second-level granularity? Because you can avoid bullshit like the program running too slow in Python
+# Why second-level granularity? Because you can avoid bullshit like the program running too slow in Python and failing to execute the trade on time
 # does the second at which the price is updated matter at all? Also are we classifying up/down/constant or a numerical predictive value? I feel like having an output layer of 3 is good or at least simpler
+# What if the NN is as deep as DESIGN_WIDTH? That would almost be like hypercurve decision making
+# - this kind of defeats the purpose of the NN now that I think about it.
+# I should have a layer that literally just changes the importance of each node based on its seconds value, just a copy layer
+
+# If my NN has a boolean output...is there a better way to do this? or like, what's a simple way of looking at the problem?
