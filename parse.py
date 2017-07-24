@@ -6,6 +6,7 @@ import urllib
 import re
 import json
 import csv
+import http.client
 
 from six.moves import xrange
 import tensorflow as tf
@@ -14,20 +15,34 @@ import tensorflow as tf
 EXAMPLE_SIZE = 30
 DESIGN_WIDTH = EXAMPLE_SIZE - 1
 
+data_exists = {
+    "nasdaq": False
+    "nyse": False
+    "amex": False
+}
 
 def get_ticker_data(ticker, freq):
     # Reads Bloomberg stock data into a file labeled with the ticker
     # Heavily adapted from https://github.com/matthewfieger/bloomberg_stock_data
     try:
-        htmltext = urllib.urlopen("http://www.bloomberg.com/markets/chart/data/" + frequency + "/" + ticker + ":US")
-	data = json.load(htmltext)
-	datapoints = data["data_values"]
-        ticker_file = open("./prices/" + ticker + ".txt", "a")
+        ticker_url = "http://www.bloomberg.com/markets/chart/data/" + freq + "/" + ticker + ":US"
+        response = urllib.request.urlopen("http://www.bloomberg.com/markets/chart/data/" + str(freq) + "/" + ticker + ":US")
+        str_response = response.read().decode("utf-8")
+        data = json.loads(str_response)
+        datapoints = data["data_values"]
+        ticker_file = open("./prices/" + ticker + ".txt", "w")
         for point in datapoints:
             ticker_file.write(str(ticker + "," + str(point[0]) + "," + str(point[1]) + "\n"))
-	    ticker_file.close()
+        ticker_file.close()
     except:
-        print "Exception: Bloomberg API failed to retrieve data."
+        print("Exception: Bloomberg API failed to retrieve data.")
+
+def get_all_data(exchange):
+    with open("./tickers/" + exchange + ".csv", "rb") as tickers:
+        reader = csv.reader(tickers)
+        for row in reader:
+            get_ticker_data(row[0])
+    data_exists[exchange] = True
 
 def read_ticker_data(ticker):
     # Opens ticker data file and returns second granularity data
@@ -40,13 +55,26 @@ def read_ticker_data(ticker):
             data.append(tokens)
     return data
 
-def gen_training_data(ticker):
+def build_ticker_data(raw_data):
     design_matrix = []
     label_vector = []
-    for i in xrange(len(data) - EXAMPLE_SIZE):
-        design_matrix.append(data[i : i + DESIGN_WIDTH])
-        label_vector.add((data[i + DESIGN_WIDTH] > data[i + DESIGN_WIDTH - 1]))
+    for i in xrange(len(raw_data) - EXAMPLE_SIZE):
+        design_matrix.append(raw_data[i : i + DESIGN_WIDTH])
+        label_vector.add((raw_data[i + DESIGN_WIDTH] > raw_data[i + DESIGN_WIDTH - 1]))
     return [design_matrix, label_vector]
+
+def generate_training_data(exchange):
+    training_data = []
+    if not (exchange in data_exists and data_exists[exchange] = True):
+        get_all_data(exchange)
+    with open("./tickers/" + exchange + ".csv", "rb") as tickers:
+        reader = csv.reader(tickers)
+        for row in reader:
+            training_data.append(build_ticker_data(row[0]))
+    return training_data
+
+
+
 
 
 # each data point is a day? See "sliding window"
