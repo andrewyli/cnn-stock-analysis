@@ -2,11 +2,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import urllib
+import urllib.request
 import re
 import json
 import csv
-import http.client
+import ssl
 
 from six.moves import xrange
 import tensorflow as tf
@@ -16,8 +16,8 @@ EXAMPLE_SIZE = 30
 DESIGN_WIDTH = EXAMPLE_SIZE - 1
 
 data_exists = {
-    "nasdaq": False
-    "nyse": False
+    "nasdaq": False,
+    "nyse": False,
     "amex": False
 }
 
@@ -25,8 +25,9 @@ def get_ticker_data(ticker, freq):
     # Reads Bloomberg stock data into a file labeled with the ticker
     # Heavily adapted from https://github.com/matthewfieger/bloomberg_stock_data
     try:
-        ticker_url = "http://www.bloomberg.com/markets/chart/data/" + freq + "/" + ticker + ":US"
-        response = urllib.request.urlopen("http://www.bloomberg.com/markets/chart/data/" + str(freq) + "/" + ticker + ":US")
+        ticker_url = "http://www.bloomberg.com/markets/chart/data/" + str(freq) + "/" + str(ticker) + ":US"
+        context = ssl._create_unverified_context()
+        response = urllib.request.urlopen(ticker_url, context=context)
         str_response = response.read().decode("utf-8")
         data = json.loads(str_response)
         datapoints = data["data_values"]
@@ -38,10 +39,18 @@ def get_ticker_data(ticker, freq):
         print("Exception: Bloomberg API failed to retrieve data.")
 
 def get_all_data(exchange):
-    with open("./tickers/" + exchange + ".csv", "rb") as tickers:
+    with open("./tickers/" + exchange + ".csv", "r") as tickers:
         reader = csv.reader(tickers)
+        first_row = False
+        i = 0
         for row in reader:
-            get_ticker_data(row[0])
+            i += 1
+            if i > 10:
+                break
+            if first_row:
+                print("Reading data for: " + row[0])
+                get_ticker_data(row[0], "1D")
+            first_row = True
     data_exists[exchange] = True
 
 def read_ticker_data(ticker):
@@ -65,12 +74,21 @@ def build_ticker_data(raw_data):
 
 def generate_training_data(exchange):
     training_data = []
-    if not (exchange in data_exists and data_exists[exchange] = True):
+    if not (exchange in data_exists and data_exists[exchange]):
         get_all_data(exchange)
-    with open("./tickers/" + exchange + ".csv", "rb") as tickers:
+    with open("./tickers/" + exchange + ".csv", "r") as tickers:
         reader = csv.reader(tickers)
+        i = 0
         for row in reader:
-            training_data.append(build_ticker_data(row[0]))
+            i += 1
+            if i > 10:
+                break
+            with open("./prices/" + row[0] + ".txt", "r") as f:
+                # get actual stock values
+                raw_data = [float(re.split(r"[,\n]", line)[2]) for line in f.readlines()]
+                # training_data.append(build_ticker_data(raw_data))
+                print("Raw: ", raw_data)
+                training_data.append(raw_data)
     return training_data
 
 
