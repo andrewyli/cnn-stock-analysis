@@ -15,12 +15,6 @@ import tensorflow as tf
 EXAMPLE_SIZE = 30
 DESIGN_WIDTH = EXAMPLE_SIZE - 1
 
-data_exists = {
-    "nasdaq": False,
-    "nyse": False,
-    "amex": False
-}
-
 def get_ticker_data(ticker, freq):
     # Reads Bloomberg stock data into a file labeled with the ticker
     # Heavily adapted from https://github.com/matthewfieger/bloomberg_stock_data
@@ -44,24 +38,19 @@ def get_all_data(exchange):
         first_row = False
         i = 0
         for row in reader:
-            i += 1
-            if i > 10:
-                break
             if first_row:
-                print("Reading data for: " + row[0])
+                print("Getting data for: " + row[0])
                 get_ticker_data(row[0], "1D")
             first_row = True
-    data_exists[exchange] = True
 
 def read_ticker_data(ticker):
     # Opens ticker data file and returns second granularity data
-    with open("./prices/" + ticker + ".txt", "r") as f:
+    with open("./prices/" + str(ticker) + ".txt", "r") as f:
         lines = f.readlines()
-        data = []
-        for line in lines:
-            # convert to ints
-            tokens = [int(val) for val in line.split(",")]
-            data.append(tokens)
+        if not lines:
+            return []
+        # ignore the first line (column headers)
+        return [float(line.split(",")[2].strip()) for line in lines]
     return data
 
 def build_ticker_data(raw_data):
@@ -74,21 +63,17 @@ def build_ticker_data(raw_data):
 
 def generate_raw_data(exchange):
     training_data = []
-    if not (exchange in data_exists and data_exists[exchange]):
-        get_all_data(exchange)
     with open("./tickers/" + exchange + ".csv", "r") as tickers:
         reader = csv.reader(tickers)
         i = 0
         for row in reader:
             i += 1
-            if i > 10:
-                break
-            with open("./prices/" + row[0] + ".txt", "r") as f:
-                # get actual stock values
-                raw_data = [float(re.split(r"[,\n]", line)[2]) for line in f.readlines()]
-                # training_data.append(build_ticker_data(raw_data))
-                print("Raw: ", raw_data)
-                training_data.append(raw_data)
+            # if i > 10:
+            #     break
+            data = read_ticker_data(row[0])
+            print(row[0])
+            if data:
+                training_data.append(data)
     return training_data
 
 
