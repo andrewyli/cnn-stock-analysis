@@ -12,7 +12,7 @@ from six.moves import xrange
 import tensorflow as tf
 
 # GLOBAL CONFIG PARAMETERS
-EXAMPLE_SIZE = 30
+EXAMPLE_SIZE = 10
 DESIGN_WIDTH = EXAMPLE_SIZE - 1
 
 def get_ticker_data(ticker, freq):
@@ -45,7 +45,9 @@ def get_all_data(exchange):
 
 def read_ticker_data(ticker):
     # Opens ticker data file and returns second granularity data
-    with open("./prices/" + str(ticker) + ".txt", "r") as f:
+
+    # BLIN.txt doesn't work atm
+    with open("./prices/" + str(ticker).strip() + ".txt", "r") as f:
         lines = f.readlines()
         if not lines:
             return []
@@ -53,28 +55,32 @@ def read_ticker_data(ticker):
         return [float(line.split(",")[2].strip()) for line in lines]
     return data
 
-def build_ticker_data(raw_data):
-    design_matrix = []
-    label_vector = []
-    for i in xrange(len(raw_data) - EXAMPLE_SIZE):
-        design_matrix.append(raw_data[i : i + DESIGN_WIDTH])
-        label_vector.add((raw_data[i + DESIGN_WIDTH] > raw_data[i + DESIGN_WIDTH - 1]))
-    return [design_matrix, label_vector]
-
 def generate_raw_data(exchange):
     training_data = []
     with open("./tickers/" + exchange + ".csv", "r") as tickers:
         reader = csv.reader(tickers)
-        i = 0
         for row in reader:
-            i += 1
-            # if i > 10:
-            #     break
             data = read_ticker_data(row[0])
             print(row[0])
             if data:
                 training_data.append(data)
     return training_data
+
+def build_ticker_data(raw_data):
+    design_matrix = []
+    label_vector = []
+    for i in xrange(len(raw_data) - EXAMPLE_SIZE):
+        design_matrix.append(raw_data[i : i + DESIGN_WIDTH])
+        label_vector.append((raw_data[i + DESIGN_WIDTH] > raw_data[i + DESIGN_WIDTH - 1]))
+    return [design_matrix, label_vector]
+
+# def build_all_data(raw_data):
+#     training_data
+#     with open("./tickers/" + exchange + ".csv", "r") as tickers:
+#         reader = csv.reader(tickers)
+#         for row in reader:
+#             data = read_ticker_data(row[0])
+
 
 
 
@@ -96,3 +102,4 @@ def generate_raw_data(exchange):
 # If my NN has a boolean output...is there a better way to do this? or like, what's a simple way of looking at the problem?
 # - Gotcha: https://stats.stackexchange.com/questions/207049/neural-network-for-binary-classification-use-1-or-2-output-neurons
 # - Same: https://stats.stackexchange.com/questions/233658/softmax-vs-sigmoid-function-in-logistic-classifier
+# Now that I think about it size shoudl be fairly small if we're using CNN classifcation on types of segements of stock
