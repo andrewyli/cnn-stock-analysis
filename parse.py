@@ -15,6 +15,9 @@ import tensorflow as tf
 EXAMPLE_SIZE = 10
 DESIGN_WIDTH = EXAMPLE_SIZE - 1
 
+class Dataset:
+    pass
+
 def get_ticker_data(ticker, freq):
     # Reads Bloomberg stock data into a file labeled with the ticker
     # Heavily adapted from https://github.com/matthewfieger/bloomberg_stock_data
@@ -56,31 +59,35 @@ def read_ticker_data(ticker):
     return data
 
 def generate_raw_data(exchange):
-    training_data = []
+    raw_data = []
     with open("./tickers/" + exchange + ".csv", "r") as tickers:
         reader = csv.reader(tickers)
         for row in reader:
-            data = read_ticker_data(row[0])
+            ticker_data = read_ticker_data(row[0])
             print(row[0])
-            if data:
-                training_data.append(data)
-    return training_data
+            if ticker_data:
+                raw_data.append(ticker_data)
+    return raw_data
 
-def build_ticker_data(raw_data):
+def build_example(raw_data):
     design_matrix = []
     label_vector = []
     for i in xrange(len(raw_data) - EXAMPLE_SIZE):
         design_matrix.append(raw_data[i : i + DESIGN_WIDTH])
         label_vector.append((raw_data[i + DESIGN_WIDTH] > raw_data[i + DESIGN_WIDTH - 1]))
-    return [design_matrix, label_vector]
+    return (design_matrix, label_vector)
 
-# def build_all_data(raw_data):
-#     training_data
-#     with open("./tickers/" + exchange + ".csv", "r") as tickers:
-#         reader = csv.reader(tickers)
-#         for row in reader:
-#             data = read_ticker_data(row[0])
-
+def build_all_data(raw_data):
+    design_matrix = []
+    label_vector = []
+    for ticker_data in raw_data:
+        dm, lv = build_example(ticker_data)
+        design_matrix.append(dm)
+        label_vector.append(lv)
+    data = Dataset()
+    data.X = design_matrix
+    data.y = label_vector
+    return data
 
 
 
