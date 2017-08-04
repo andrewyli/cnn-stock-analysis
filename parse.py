@@ -74,7 +74,7 @@ def build_example(raw_data):
     label_vector = []
     for i in xrange(len(raw_data) - EXAMPLE_SIZE):
         design_matrix.append(raw_data[i : i + DESIGN_WIDTH])
-        label_vector.append((raw_data[i + DESIGN_WIDTH] > raw_data[i + DESIGN_WIDTH - 1]))
+        label_vector.append(int(raw_data[i + DESIGN_WIDTH] > raw_data[i + DESIGN_WIDTH - 1]))
     return (design_matrix, label_vector)
 
 def build_all_data(raw_data):
