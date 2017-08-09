@@ -12,8 +12,9 @@ from six.moves import xrange
 import tensorflow as tf
 
 # GLOBAL CONFIG PARAMETERS
-EXAMPLE_SIZE = 10
-DESIGN_WIDTH = EXAMPLE_SIZE - 1
+SEQ_LENGTH = 10
+DESIGN_WIDTH = SEQ_LENGTH - 1
+NUM_CLASSES = 2
 
 class Dataset:
     pass
@@ -72,7 +73,7 @@ def generate_raw_data(exchange):
 def build_example(raw_data):
     design_matrix = []
     label_vector = []
-    for i in xrange(len(raw_data) - EXAMPLE_SIZE):
+    for i in xrange(len(raw_data) - SEQ_LENGTH):
         design_matrix.append(raw_data[i : i + DESIGN_WIDTH])
         label_vector.append(int(raw_data[i + DESIGN_WIDTH] > raw_data[i + DESIGN_WIDTH - 1]))
     return (design_matrix, label_vector)
@@ -82,8 +83,8 @@ def build_all_data(raw_data):
     label_vector = []
     for ticker_data in raw_data:
         dm, lv = build_example(ticker_data)
-        design_matrix.append(dm)
-        label_vector.append(lv)
+        design_matrix.extend(dm)
+        label_vector.extend(lv)
     data = Dataset()
     data.X = design_matrix
     data.y = label_vector
