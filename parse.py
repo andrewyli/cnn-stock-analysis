@@ -7,6 +7,7 @@ import re
 import json
 import csv
 import ssl
+import random
 
 from six.moves import xrange
 import tensorflow as tf
@@ -37,6 +38,7 @@ def get_ticker_data(ticker, freq):
         print("Exception: Bloomberg API failed to retrieve data.")
 
 def get_all_data(exchange):
+    # runs "get_ticker_data" for all stocks in an exchange
     with open("./tickers/" + exchange + ".csv", "r") as tickers:
         reader = csv.reader(tickers)
         first_row = False
@@ -48,7 +50,7 @@ def get_all_data(exchange):
             first_row = True
 
 def read_ticker_data(ticker):
-    # Opens ticker data file and returns second granularity data
+    # Opens ticker data file and returns minute granularity data
 
     # BLIN.txt doesn't work atm
     with open("./prices/" + str(ticker).strip() + ".txt", "r") as f:
@@ -60,6 +62,7 @@ def read_ticker_data(ticker):
     return data
 
 def generate_raw_data(exchange):
+    # grabs data for all stocks in an exchange from stored files
     raw_data = []
     with open("./tickers/" + exchange + ".csv", "r") as tickers:
         reader = csv.reader(tickers)
@@ -71,6 +74,7 @@ def generate_raw_data(exchange):
     return raw_data
 
 def build_example(raw_data):
+    # takes a day's values and slices to form intervals (examples)
     design_matrix = []
     label_vector = []
     for i in xrange(len(raw_data) - SEQ_LENGTH):
@@ -79,6 +83,7 @@ def build_example(raw_data):
     return (design_matrix, label_vector)
 
 def build_all_data(raw_data):
+    # builds all examples
     design_matrix = []
     label_vector = []
     for ticker_data in raw_data:
@@ -89,6 +94,21 @@ def build_all_data(raw_data):
     data.X = design_matrix
     data.y = label_vector
     return data
+
+def partition_data(data):
+    # randomly divides the Dataset into training and test datasets (80-20 split)
+    assert(type(data) == "Dataset")
+
+    training, test = Dataset(), Dataset()
+    for ex in zip(data.X, data.y):
+        if random.randint(0, 9) < 2:
+            test.X.append(ex[0])
+            test.y.append(ex[1])
+        else:
+            training.X.append(ex[0])
+            training.y.append(ex[1])
+    return (training, test)
+
 
 
 
