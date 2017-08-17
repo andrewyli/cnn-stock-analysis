@@ -16,6 +16,7 @@ import tensorflow as tf
 SEQ_LENGTH = 10
 DESIGN_WIDTH = SEQ_LENGTH - 1
 NUM_CLASSES = 2
+BATCH_SIZE = 32
 
 class Dataset:
     pass
@@ -37,6 +38,7 @@ def get_ticker_data(ticker, freq):
     except:
         print("Exception: Bloomberg API failed to retrieve data.")
 
+
 def get_all_data(exchange):
     # runs "get_ticker_data" for all stocks in an exchange
     with open("./tickers/" + exchange + ".csv", "r") as tickers:
@@ -48,6 +50,7 @@ def get_all_data(exchange):
                 print("Getting data for: " + row[0])
                 get_ticker_data(row[0], "1D")
             first_row = True
+
 
 def read_ticker_data(ticker):
     # Opens ticker data file and returns minute granularity data
@@ -61,6 +64,7 @@ def read_ticker_data(ticker):
         return [float(line.split(",")[2].strip()) for line in lines]
     return data
 
+
 def generate_raw_data(exchange):
     # grabs data for all stocks in an exchange from stored files
     raw_data = []
@@ -73,6 +77,7 @@ def generate_raw_data(exchange):
                 raw_data.append(ticker_data)
     return raw_data
 
+
 def build_example(raw_data):
     # takes a day's values and slices to form intervals (examples)
     design_matrix = []
@@ -81,6 +86,7 @@ def build_example(raw_data):
         design_matrix.append(raw_data[i : i + DESIGN_WIDTH])
         label_vector.append(int(raw_data[i + DESIGN_WIDTH] > raw_data[i + DESIGN_WIDTH - 1]))
     return (design_matrix, label_vector)
+
 
 def build_all_data(raw_data):
     # builds all examples
@@ -91,12 +97,13 @@ def build_all_data(raw_data):
         design_matrix.extend(dm)
         label_vector.extend(lv)
     data = Dataset()
-    data.X = design_matrix
-    data.y = label_vector
+    data.X = tf.reshape(design_matrix, [-1, DESIGN_WIDTH, 1])
+    data.y = tf.reshape(label_vector, [-1])
     return data
 
+
 def partition_data(data):
-    # randomly divides the Dataset into training and test datasets (80-20 split)
+    # randomly divides a Dataset into training and test datasets (80-20 split)
     assert(type(data) == "Dataset")
 
     training, test = Dataset(), Dataset()
@@ -110,7 +117,23 @@ def partition_data(data):
     return (training, test)
 
 
-
+# def generate_batch(seq, label, min_queue_examples,
+#                    batch_size, shuffle):
+#     num_preprocess_threads = 2
+#     if shuffle:
+#         seqs, label_batch = tf.train.shuffle_batch(
+#             [seq, label],
+#             batch_size=batch_size,
+#             num_threads=num_preprocess_threads,
+#             capacity=min_queue_examples + 3 * batch_size,
+#             min_after_dequeue=min_queue_examples)
+#     else:
+#         seqs, label_batch = tf.train.batch(
+#             [seq, label],
+#             batch_size=batch_size,
+#             num_threads=num_preprocess_threads,
+#             capacity=min_queue_examples + 3 * batch_size)
+#     return seqs, tf.reshape(label_batch, [batch_size])
 
 # each data point is a day? See "sliding window"
 # what can we classify from each of these?
