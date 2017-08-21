@@ -41,19 +41,44 @@ def _variable_with_weight_decay(name, shape, stddev, wd):
   return var
 
 
-def create_network(seqs):
-    # creates the NN
-    # Structure:
+def inference(seqs):
+    # creates the CNN
+
+    # initial batch normalization
+    mean1, variance1 = tf.nn.moments(seqs, [0], keep_dims=True)
+    norm1 = tf.nn.batch_normalization(seqs, mean1, variance1, 0.001)
+
+    # first layer
     with tf.variable_scope("conv1") as scope:
-        kernel = tf.Variable("kernel_weights",
+        kernel = tf.Variable("kernel_weights1",
                              shape=[KER_LENGTH, 1, BATCH_SIZE],
-                             stddev=1e-1,
+                             stddev=5e-2,
                              wd=0.0)
-        conv = tf.nn.conv1d(seqs, kernel, stride=1, padding="SAME")
-        biases = _variable_on_cpu("biases", [BATCH_SIZE], tf.constant_initializer(0.0))
+        conv = tf.nn.conv1d(norm1, kernel, stride=1, padding="SAME")
+        biases = _variable_on_cpu("biases",
+                                  [BATCH_SIZE],
+                                  tf.truncated_normal_initializer(0.0))
         pre_activation = tf.nn.bias_add(conv, biases)
         conv1 = tf.nn.relu(pre_activation, name=scope.name)
 
-    # no pooling layer
+    # no pooling layer because of the nature of stock data precision
 
-    norm1 = tf.nn.lrn()
+    # normalization layer with batch normalization hidden -> hidden
+    mean2, variance2 = tf.nn.moments(conv1, [0], keep_dims=True)
+    norm2 = tf.nn.batch_normalization(conv1, mean2, variance2, 0.001)
+
+    # second layer
+    with tf.variable_scope("conv2") as scope:
+        kernel = tf.Variable("kernel_weights2",
+                             shape=[KER_LENGTH, 1, BATCH_SIZE],
+                             stddev=5e-2,
+                             wd=0.0)
+        conv = tf.nn.conv1d(norm2, kernel, stride=1, padding="SAME")
+        biases = _variable_on_cpu("biases",
+                                  [BATCH_SIZE],
+                                  tf.truncated_normal_initializer(0.0))
+        pre_activation = tf.nn.bias_add(conv, biases)
+        conv2 = tf.nn.relu(pre_activation, name=scope.name)
+
+    # dense layer
+    with tf.variable_scope("dense") as scope:
