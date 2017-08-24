@@ -80,5 +80,49 @@ def inference(seqs):
         pre_activation = tf.nn.bias_add(conv, biases)
         conv2 = tf.nn.relu(pre_activation, name=scope.name)
 
+    # normalization layer with batch normalization hidden -> hidden
+    mean3, variance3 = tf.nn.moments(conv2, [0], keep_dims=True)
+    norm3 = tf.nn.batch_normalization(conv2, mean3, variance3, 0.001)
+
+
     # dense layer
+    with tf.variable_scope("flatten") as scope:
+        reshape = tf.reshape(norm3, [BATCH_SIZE, -1])
+        dim = reshape.get_shape()[1].value
+        weights = _variable_with_weight_decay("flatten_weights",
+                                              shape=[dim, 384],
+                                              stddev=0.04,
+                                              wd=0.004)
+        biases = _variable_on_cpu("biases",
+                                  [384],
+                                  tf.truncated_normal_initializer(0.1))
+        flatten = tf.nn.relu(tf.matmul(norm3, weights) + biases, name = scope.name)
+
+        keep_prob = tf.placeholder(tf.float32)
+        flatten_drop = tf.nn.dropout(flatten, keep_prob)
+
+    # second dense layer
     with tf.variable_scope("dense") as scope:
+        weights = _variable_with_weight_decay("flatten_weights",
+                                              shape=[384, 192],
+                                              stddev=0.04,
+                                              wd=0.004)
+        biases = _variable_on_cpu("biases",
+                                  [192],
+                                  tf.truncated_normal_initializer(0.1))
+        dense = tf.nn.relu(tf.matmul(flatten_drop, weights) + biases, name = scope.name)
+
+        keep_prob = tf.placeholder(tf.float32)
+        dense_drop = tf.nn.dropout(dense, keep_prob)
+
+    # sigmoid
+    with tf.variable_scope("sigmoid") as scope:
+        weights = _variable_with_weight_decay("weights",
+                                              [192, NUM_CLASSES],
+                                              stddev=1/192.0, wd=0.0)
+        biases = _variable_on_cpu("biases",
+                                  [NUM_CLASSES],
+                                  tf.truncated_normal_initializer(0.1))
+        sigmoid = tf.sigmoid(tf.matmul(dense_drop, weights) + biases), name=scope.name)
+
+    return sigmoid
